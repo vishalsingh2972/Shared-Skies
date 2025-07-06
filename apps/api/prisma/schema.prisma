@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  username  String?
+  email     String?
+  createdAt DateTime @default(now())
+  // lastActive  DateTime? // Track online status
+  // avatarUrl   String?   // Profile pictures
+  // @@unique([email])     // Ensure email uniqueness
+
+  // Relations
+  messages Message[]
+  rooms    Room[]    @relation("RoomParticipants")
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  mood      String
+  createdAt DateTime @default(now())
+  // maxMembers  Int      @default(4)    // Limit participants
+  // isActive    Boolean  @default(true) // Close inactive rooms
+  // expiresAt   DateTime?               // Auto-close timing
+
+  // Relations
+  messages Message[]
+  users    User[]    @relation("RoomParticipants")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  // updatedAt DateTime @updatedAt // Track edits
+  // isEdited  Boolean  @default(false)
+  // @@index([roomId, createdAt]) // Optimize chat history queries
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  room   Room   @relation(fields: [roomId], references: [id])
+  userId String
+  roomId String
+}
+
+//Room Participants Tracking (For Better Analytics):
+// model RoomParticipant {
+//   id       String   @id @default(cuid())
+//   user     User     @relation(fields: [userId], references: [id])
+//   room     Room     @relation(fields: [roomId], references: [id])
+//   joinedAt DateTime @default(now())
+//   leftAt   DateTime?
+// }
+
+
+//ReportedMessage model adds moderation capabilities to your chat app by tracking when users report inappropriate messages
+// model ReportedMessage {
+//   id        String   @id @default(cuid())
+//   message   Message  @relation(fields: [messageId], references: [id])
+//   reason    String
+//   createdAt DateTime @default(now())
+// }
