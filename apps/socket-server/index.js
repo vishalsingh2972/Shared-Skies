@@ -14,6 +14,7 @@ const io = new Server(server, {
 });
 
 app.use(cors());
+
 app.get('/', (req, res) => {
   res.send('Socket.IO Chat Server Running!');
 });
@@ -28,7 +29,19 @@ io.on('connection', (socket) => {
 
   socket.on('chatMessage', (data) => {
     console.log('Received message payload from client:', data);
+    
+    // Add server timestamp if not present (fallback)
+    if (!data.timestamp) {
+      data.timestamp = new Date().toISOString();
+    }
+    
+    // Broadcast the message to all users in the room
     io.to(data.roomId).emit('chatMessage', data);
+  });
+
+  socket.on('leaveRoom', (roomId) => {
+    console.log(`User ${socket.id} left room: ${roomId}`);
+    socket.leave(roomId);
   });
 
   socket.on('disconnect', () => {

@@ -29,6 +29,28 @@ export default function ChatRoomPage() {
   const [userColors, setUserColors] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Format timestamp function
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) {
+      return 'just now';
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`;
+    } else if (diffInMinutes < 1440) { // less than 24 hours
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours}h ago`;
+    } else {
+      // Show date for older messages
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+  };
+
   useEffect(() => {
     const fetchRoom = async () => {
       try {
@@ -104,6 +126,7 @@ export default function ChatRoomPage() {
         sender: user?.fullName || 'Anonymous',
         photo: user?.imageUrl || null,
         userId: user?.id || null,
+        timestamp: new Date().toISOString(), // Add timestamp
       };
       console.log('📤 Sending message payload:', payload);
       socket.emit('chatMessage', payload);
@@ -164,11 +187,18 @@ export default function ChatRoomPage() {
                     />
                   )}
                   <div className="flex-1">
-                    <div className="flex items-baseline">
-                      <div className="font-semibold text-gray-800">{msg.sender}</div>
-                      {msg.userId === user?.id && (
-                        <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
-                          You
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <div className="font-semibold text-gray-800">{msg.sender}</div>
+                        {msg.userId === user?.id && (
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      {msg.timestamp && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          {formatTimestamp(msg.timestamp)}
                         </span>
                       )}
                     </div>
