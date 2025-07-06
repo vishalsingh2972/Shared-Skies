@@ -194,7 +194,7 @@ export default function ChatRoomPage() {
                 handleSendMessage();
               }
             }}
-            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black"
             placeholder="Type your message..."
           />
           <button
