@@ -75,7 +75,7 @@ export default function DashboardPage() {
             {rooms.map((room) => (
               <button
                 key={room.id}
-                className="bg-white border border-gray-200 rounded-lg p-6 text-center transition-all duration-200 hover:bg-gray-100"
+                className="bg-white border border-gray-200 rounded-lg p-6 text-center transition-all duration-200 hover:bg-pink-100"
                 onClick={() => router.push(`/dashboard/room/${room.id}`)}
               >
                 <div className="text-lg font-medium text-gray-900">{room.mood}</div>
