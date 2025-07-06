@@ -1,0 +1,15 @@
+{
+  "name": "shared-skies",
+  "version": "1.0.0",
+  "description": "A real-time communication app designed to ease loneliness by connecting people through shared interests and life topics. Select categories like relationships, career, or art, and join text or video chat rooms—because there’s always someone out there to listen, and someone who needs you too.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}
