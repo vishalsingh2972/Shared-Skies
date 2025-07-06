@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 import roomRoutes from './api/rooms/route';
 import userRoutes from './api/users/route';
 import messageRoutes from './api/messages/route';
+import { prisma } from './lib/prisma';
 
 const app = express();
 const server = createServer(app);
@@ -34,9 +35,33 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 
-// Socket.io connection (Optional for now, ready to use later)
 io.on('connection', (socket) => {
   console.log(`⚡ New client connected: ${socket.id}`);
+
+  // Join Room
+  socket.on('join_room', (roomId) => {
+    socket.join(roomId);
+    console.log(`User joined room: ${roomId}`);
+  });
+
+  // Send Message
+  socket.on('send_message', async (data) => {
+    const { roomId, userId, content } = data;
+
+    try {
+      // Save message to DB
+      const message = await prisma.message.create({
+        data: { roomId, userId, content },
+        include: { user: { select: { username: true } } },
+      });
+
+      // Broadcast message to everyone in the room
+      io.to(roomId).emit('receive_message', message);
+      console.log('Message sent to room:', roomId);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log(`🔥 Client disconnected: ${socket.id}`);
