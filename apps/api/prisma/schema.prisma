@@ -13,57 +13,37 @@ model User {
   username  String?
   email     String?
   createdAt DateTime @default(now())
-  // lastActive  DateTime? // Track online status
-  // avatarUrl   String?   // Profile pictures
-  // @@unique([email])     // Ensure email uniqueness
 
-  // Relations
   messages Message[]
-  rooms    Room[]    @relation("RoomParticipants")
+  rooms    RoomUser[]
 }
 
 model Room {
-  id        String   @id @default(cuid())
-  mood      String
-  createdAt DateTime @default(now())
-  // maxMembers  Int      @default(4)    // Limit participants
-  // isActive    Boolean  @default(true) // Close inactive rooms
-  // expiresAt   DateTime?               // Auto-close timing
+  id          String      @id @default(cuid())
+  mood        String
+  createdAt   DateTime    @default(now())
 
-  // Relations
-  messages Message[]
-  users    User[]    @relation("RoomParticipants")
+  messages    Message[]
+  users       RoomUser[]
 }
 
 model Message {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
-  // updatedAt DateTime @updatedAt // Track edits
-  // isEdited  Boolean  @default(false)
-  // @@index([roomId, createdAt]) // Optimize chat history queries
+  userId    String
+  roomId    String
 
-  // Relations
-  user   User   @relation(fields: [userId], references: [id])
-  room   Room   @relation(fields: [roomId], references: [id])
-  userId String
-  roomId String
+  user      User     @relation(fields: [userId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id])
 }
 
-//Room Participants Tracking (For Better Analytics):
-// model RoomParticipant {
-//   id       String   @id @default(cuid())
-//   user     User     @relation(fields: [userId], references: [id])
-//   room     Room     @relation(fields: [roomId], references: [id])
-//   joinedAt DateTime @default(now())
-//   leftAt   DateTime?
-// }
+model RoomUser {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String
+  joinedAt  DateTime @default(now())
 
-
-//ReportedMessage model adds moderation capabilities to your chat app by tracking when users report inappropriate messages
-// model ReportedMessage {
-//   id        String   @id @default(cuid())
-//   message   Message  @relation(fields: [messageId], references: [id])
-//   reason    String
-//   createdAt DateTime @default(now())
-// }
+  user      User     @relation(fields: [userId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id])
+}
