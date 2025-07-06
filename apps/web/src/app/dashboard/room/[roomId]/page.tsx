@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import Loading from '../../../loading';
@@ -9,6 +9,8 @@ import Loading from '../../../loading';
 export default function ChatRoomPage() {
   const { roomId } = useParams();
   const { isSignedIn } = useUser();
+  const router = useRouter();
+
   const [room, setRoom] = useState<{ id: string; mood: string } | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [socket, setSocket] = useState<any>(null);
@@ -59,16 +61,30 @@ export default function ChatRoomPage() {
     }
   };
 
+  const handleLeaveRoom = () => {
+    if (socket) {
+      socket.emit('leaveRoom', roomId);
+      socket.disconnect();
+    }
+    router.push('/dashboard');
+  };
+
   if (!isSignedIn) return <Loading />;
   if (loadingRoom) return <div className="p-4 text-center">Loading room...</div>;
   if (!room) return <div className="p-4 text-center">Room not found.</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <header className="bg-blue-600 p-4">
-        <h1 className="text-xl font-bold text-white text-center">
+      <header className="bg-blue-600 p-4 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-white text-center flex-1">
           {room.mood}
         </h1>
+        <button
+          onClick={handleLeaveRoom}
+          className="bg-red-500 text-white rounded px-3 py-1 hover:bg-red-600 ml-4"
+        >
+          Leave Room
+        </button>
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto">
