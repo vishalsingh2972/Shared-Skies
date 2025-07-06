@@ -1,8 +1,9 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
+import { useUser, UserButton } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Loading from '../loading';
 
 export default function DashboardPage() {
   const { isSignedIn, user } = useUser();
@@ -15,26 +16,27 @@ export default function DashboardPage() {
   }, [isSignedIn, router]);
 
   if (!isSignedIn) {
-    return <div className="flex items-center justify-center min-h-screen">Redirecting...</div>;
+    return <Loading />;
   }
 
-  // Mood categories for selection
   const moodCategories = [
-    "Loneliness & Isolation",
-    "Relationships & Dating",
-    "Career & Work Life",
-    "Anxiety & Stress",
-    "Self-Discovery",
-    "Hobbies & Interests",
-    "Life Transitions",
-    "Need to Vent",
-    "Celebrating Good News",
-    "Deep Conversations"
+    { name: "Loneliness & Isolation", hoverColor: "hover:bg-purple-100" },
+    { name: "Relationships & Dating", hoverColor: "hover:bg-pink-100" },
+    { name: "Career & Work Life", hoverColor: "hover:bg-blue-100" },
+    { name: "Anxiety & Stress", hoverColor: "hover:bg-red-100" },
+    { name: "Self-Discovery", hoverColor: "hover:bg-yellow-100" },
+    { name: "Hobbies & Interests", hoverColor: "hover:bg-green-100" },
+    { name: "Life Transitions", hoverColor: "hover:bg-orange-100" },
+    { name: "Need to Vent", hoverColor: "hover:bg-gray-100" },
+    { name: "Celebrating Good News", hoverColor: "hover:bg-emerald-100" },
+    { name: "Deep Conversations", hoverColor: "hover:bg-indigo-100" },
+    { name: "Health & Wellness", hoverColor: "hover:bg-teal-100" },
+    { name: "Family & Parenting", hoverColor: "hover:bg-rose-100" },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Dashboard header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-gray-900">Shared Skies</h1>
@@ -42,11 +44,7 @@ export default function DashboardPage() {
             <div className="text-sm text-gray-600 hidden sm:block">
               Hi, {user?.firstName || "Friend"}!
             </div>
-            <img
-              src={user?.imageUrl}
-              alt="User profile"
-              className="w-8 h-8 rounded-full"
-            />
+            <UserButton/>
           </div>
         </div>
       </header>
@@ -75,10 +73,10 @@ export default function DashboardPage() {
             {moodCategories.map((mood, index) => (
               <button
                 key={index}
-                className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
-                onClick={() => console.log(`Selected mood: ${mood}`)}
+                className={`bg-white border border-gray-200 rounded-lg p-6 text-center transition-all duration-200 ${mood.hoverColor}`}
+                onClick={() => console.log(`Selected mood: ${mood.name}`)}
               >
-                <div className="text-lg font-medium text-gray-900">{mood}</div>
+                <div className="text-lg font-medium text-gray-900">{mood.name}</div>
               </button>
             ))}
           </div>
