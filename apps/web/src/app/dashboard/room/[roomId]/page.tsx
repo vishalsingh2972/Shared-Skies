@@ -98,9 +98,23 @@ export default function ChatRoomPage() {
       <main className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-2">
           {messages.map((msg, idx) => (
-            <div key={idx} className="bg-gray-200 rounded p-2 text-gray-900">
-              {typeof msg === 'string' ? msg : msg.message}
-            </div>
+            typeof msg === 'string' ? (
+              <div key={idx} className="bg-gray-200 rounded p-2 text-gray-900">{msg}</div>
+            ) : (
+              <div key={idx} className="bg-gray-200 rounded p-2 text-gray-900 flex items-center gap-2">
+                {msg.photo && (
+                  <img
+                    src={msg.photo}
+                    alt={msg.sender}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <div className="font-semibold">{msg.sender}</div>
+                  <div>{msg.message}</div>
+                </div>
+              </div>
+            )
           ))}
         </div>
       </main>
