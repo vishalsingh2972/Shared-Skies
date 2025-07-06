@@ -5,7 +5,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "dev:web": "turbo run dev --filter=web",
+    "dev:web": "turbo run dev --filter=shared-skies-web",
     "dev:api": "turbo run dev --filter=shared-skies-api"
   },
   "devDependencies": {
