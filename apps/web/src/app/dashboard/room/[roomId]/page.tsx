@@ -8,13 +8,13 @@ import Loading from '../../../loading';
 
 export default function ChatRoomPage() {
   const { roomId } = useParams();
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const router = useRouter();
 
   const [room, setRoom] = useState<{ id: string; mood: string } | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [socket, setSocket] = useState<any>(null);
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
   useEffect(() => {
@@ -44,7 +44,8 @@ export default function ChatRoomPage() {
 
       newSocket.emit('joinRoom', roomId);
 
-      newSocket.on('chatMessage', (msg: string) => {
+      newSocket.on('chatMessage', (msg) => {
+        console.log('📥 Received message from server:', msg);
         setMessages((prev) => [...prev, msg]);
       });
 
@@ -56,7 +57,14 @@ export default function ChatRoomPage() {
 
   const handleSendMessage = () => {
     if (socket && newMessage.trim()) {
-      socket.emit('chatMessage', { roomId, message: newMessage });
+      const payload = {
+        roomId,
+        message: newMessage,
+        sender: user?.fullName || 'Anonymous',
+        photo: user?.imageUrl || null,
+      };
+      console.log('📤 Sending message payload:', payload);
+      socket.emit('chatMessage', payload);
       setNewMessage('');
     }
   };
@@ -91,7 +99,7 @@ export default function ChatRoomPage() {
         <div className="space-y-2">
           {messages.map((msg, idx) => (
             <div key={idx} className="bg-gray-200 rounded p-2 text-gray-900">
-              {msg}
+              {typeof msg === 'string' ? msg : msg.message}
             </div>
           ))}
         </div>

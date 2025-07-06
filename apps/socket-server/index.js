@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all for now, later restrict to your frontend URL
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
@@ -18,7 +18,6 @@ app.get('/', (req, res) => {
   res.send('Socket.IO Chat Server Running!');
 });
 
-// Socket.IO logic
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
@@ -27,9 +26,9 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
-  socket.on('chatMessage', ({ roomId, message }) => {
-    console.log(`Message in room ${roomId}: ${message}`);
-    io.to(roomId).emit('chatMessage', message);
+  socket.on('chatMessage', (data) => {
+    console.log('Received message payload from client:', data);
+    io.to(data.roomId).emit('chatMessage', data);
   });
 
   socket.on('disconnect', () => {
@@ -37,7 +36,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
