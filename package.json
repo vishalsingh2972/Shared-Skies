@@ -5,9 +5,9 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "dev:web": "turbo run dev --filter=shared-skies-web",
     "dev:api": "turbo run dev --filter=shared-skies-api",
-    "dev:socket": "turbo run dev --filter=shared-skies-socket-server"
+    "dev:socket": "turbo run dev --filter=shared-skies-socket-server",
+    "dev:web": "turbo run dev --filter=shared-skies-web"
   },
   "devDependencies": {
     "turbo": "^1.10.0"

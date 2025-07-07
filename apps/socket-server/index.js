@@ -4,6 +4,9 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -27,15 +30,29 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
-  socket.on('chatMessage', (data) => {
+  socket.on('chatMessage', async (data) => {
     console.log('Received message payload from client:', data);
-    
+
     // Add server timestamp if not present (fallback)
     if (!data.timestamp) {
       data.timestamp = new Date().toISOString();
     }
-    
-    // Broadcast the message to all users in the room
+
+    // Save message to DB
+    try {
+      const savedMessage = await prisma.message.create({
+        data: {
+          roomId: data.roomId,
+          userId: data.userId,
+          content: data.message,
+        },
+      });
+      console.log('✅ Message saved to DB:', savedMessage);
+    } catch (error) {
+      console.error('❌ Failed to save message:', error);
+    }
+
+    // Broadcast after saving
     io.to(data.roomId).emit('chatMessage', data);
   });
 
