@@ -1,12 +1,15 @@
 {
-  "name": "socket-server",
+  "name": "shared-skies-socket-server",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "node index.js"
+    "dev": "node index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^6.11.1"
+  }
 }
