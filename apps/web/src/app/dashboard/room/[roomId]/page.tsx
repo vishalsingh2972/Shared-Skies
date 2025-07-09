@@ -13,6 +13,21 @@ const USER_COLORS = [
   'bg-purple-100 border-purple-300'
 ];
 
+type ReactionData = {
+  count: number;
+  users: any[];
+};
+
+type Message = {
+  id?: string;
+  message: string;
+  sender: string;
+  photo?: string;
+  userId?: string;
+  timestamp?: string;
+  reactions?: Record<string, ReactionData>;
+};
+
 export default function ChatRoomPage() {
   const { roomId } = useParams();
   const { isSignedIn, user } = useUser();
@@ -21,7 +36,7 @@ export default function ChatRoomPage() {
   const [room, setRoom] = useState<{ id: string; mood: string } | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [socket, setSocket] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [userColors, setUserColors] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,17 +80,22 @@ export default function ChatRoomPage() {
       setSocket(newSocket);
       newSocket.emit('joinRoom', roomId);
 
-      newSocket.on('chatMessage', (msg) => {
+      newSocket.on('chatMessage', (msg: Message) => {
         console.log('📥 Received message from server:', msg);
         setMessages((prev) => [...prev, msg]);
       });
 
-      newSocket.on('emojiReaction', (reaction) => {
+      newSocket.on('emojiReaction', (reaction: { messageContent: string; originalSender: string; emoji: string; count: number; users: any[] }) => {
         console.log('🎉 Emoji Reaction Received:', reaction);
         setMessages((prevMessages) =>
           prevMessages.map((msg) => {
             if (msg.message === reaction.messageContent && msg.sender === reaction.originalSender) {
-              return { ...msg, reaction: reaction.emoji };  // Add emoji reaction to message
+              const currentReactions = msg.reactions || {};
+              currentReactions[reaction.emoji] = {
+                count: reaction.count,
+                users: reaction.users
+              };
+              return { ...msg, reactions: currentReactions };
             }
             return msg;
           })
@@ -133,7 +153,7 @@ export default function ChatRoomPage() {
     router.push('/dashboard');
   };
 
-  const handleEmojiClick = (msg: any, emoji: string) => {
+  const handleEmojiClick = (msg: Message, emoji: string) => {
     console.log(`🧑‍💻 Emoji '${emoji}' clicked on message:`, msg);
     if (socket) {
       const payload = {
@@ -141,11 +161,11 @@ export default function ChatRoomPage() {
         messageId: msg.id || null,
         emoji,
         messageContent: msg.message,
-        sender: user?.fullName || 'Anonymous', // Who is reacting (current user)
-        originalSender: msg.sender, // Who sent the original message
+        sender: user?.fullName || 'Anonymous',
+        originalSender: msg.sender,
+        userId: user?.id || null,
       };
       console.log('Emitting emojiReaction:', payload);
-      console.log('Socket connected:', socket.connected);
       socket.emit('emojiReaction', payload);
     }
   };
@@ -213,9 +233,18 @@ export default function ChatRoomPage() {
                     </div>
                     <div className="mt-1 text-gray-700">{msg.message}</div>
                     {/* Reaction */}
-                    {msg.reaction && (
-                      <div className="absolute bottom-0 right-0 text-2xl">
-                        {msg.reaction}
+                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {Object.entries(msg.reactions).map(([emoji, data]) => (
+                          <div
+                            key={emoji}
+                            className="bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                            onClick={() => handleEmojiClick(msg, emoji)}
+                          >
+                            <span>{emoji}</span>
+                            <span className="text-gray-600">{(data as ReactionData).count}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
