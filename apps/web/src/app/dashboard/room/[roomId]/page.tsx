@@ -74,7 +74,7 @@ export default function ChatRoomPage() {
         console.log('🎉 Emoji Reaction Received:', reaction);
         setMessages((prevMessages) =>
           prevMessages.map((msg) => {
-            if (msg.message === reaction.messageContent && msg.sender === reaction.sender) {
+            if (msg.message === reaction.messageContent && msg.sender === reaction.originalSender) {
               return { ...msg, reaction: reaction.emoji };  // Add emoji reaction to message
             }
             return msg;
@@ -141,7 +141,8 @@ export default function ChatRoomPage() {
         messageId: msg.id || null,
         emoji,
         messageContent: msg.message,
-        sender: user?.fullName || 'Anonymous'
+        sender: user?.fullName || 'Anonymous', // Who is reacting (current user)
+        originalSender: msg.sender, // Who sent the original message
       };
       console.log('Emitting emojiReaction:', payload);
       console.log('Socket connected:', socket.connected);
