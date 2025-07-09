@@ -72,6 +72,14 @@ export default function ChatRoomPage() {
 
       newSocket.on('emojiReaction', (reaction) => {
         console.log('🎉 Emoji Reaction Received:', reaction);
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => {
+            if (msg.message === reaction.messageContent && msg.sender === reaction.sender) {
+              return { ...msg, reaction: reaction.emoji };  // Add emoji reaction to message
+            }
+            return msg;
+          })
+        );
       });
 
       return () => {
@@ -175,9 +183,8 @@ export default function ChatRoomPage() {
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border ${
-                  msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
-                } transition-all duration-300 hover:shadow-md relative group`}
+                className={`p-3 rounded-lg border ${msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
+                  } transition-all duration-300 hover:shadow-md relative group`}
               >
                 <div className="flex items-start gap-3">
                   {msg.photo && (
@@ -204,6 +211,12 @@ export default function ChatRoomPage() {
                       )}
                     </div>
                     <div className="mt-1 text-gray-700">{msg.message}</div>
+                    {/* Reaction */}
+                    {msg.reaction && (
+                      <div className="absolute bottom-0 right-0 text-2xl">
+                        {msg.reaction}
+                      </div>
+                    )}
                   </div>
                 </div>
 
