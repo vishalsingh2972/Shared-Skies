@@ -6,7 +6,6 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import Loading from '../../../loading';
 
-// Color options for user messages
 const USER_COLORS = [
   'bg-blue-100 border-blue-300',
   'bg-green-100 border-green-300',
@@ -24,31 +23,20 @@ export default function ChatRoomPage() {
   const [socket, setSocket] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
-
-  // Store user color assignments
   const [userColors, setUserColors] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Format timestamp function
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) {
-      return 'just now';
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`;
-    } else if (diffInMinutes < 1440) { // less than 24 hours
-      const hours = Math.floor(diffInMinutes / 60);
-      return `${hours}h ago`;
-    } else {
-      // Show date for older messages
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
+    if (diffInMinutes < 1) return 'just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   useEffect(() => {
@@ -75,12 +63,15 @@ export default function ChatRoomPage() {
     if (roomId) {
       const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL as string);
       setSocket(newSocket);
-
       newSocket.emit('joinRoom', roomId);
 
       newSocket.on('chatMessage', (msg) => {
         console.log('📥 Received message from server:', msg);
         setMessages((prev) => [...prev, msg]);
+      });
+
+      newSocket.on('emojiReaction', (reaction) => {
+        console.log('🎉 Emoji Reaction Received:', reaction);
       });
 
       return () => {
@@ -89,33 +80,25 @@ export default function ChatRoomPage() {
     }
   }, [roomId]);
 
-  // Assign colors to users when they appear in messages
   useEffect(() => {
     const newUserColors = { ...userColors };
     let changed = false;
-
-    messages.forEach(msg => {
+    messages.forEach((msg) => {
       if (msg.userId && !newUserColors[msg.userId]) {
-        // Assign a color based on user ID hash
-        const colorIndex = [...msg.userId].reduce((sum, char) =>
-          sum + char.charCodeAt(0), 0) % USER_COLORS.length;
+        const colorIndex = [...msg.userId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % USER_COLORS.length;
         newUserColors[msg.userId] = USER_COLORS[colorIndex];
         changed = true;
       }
     });
-
-    if (changed) {
-      setUserColors(newUserColors);
-    }
+    if (changed) setUserColors(newUserColors);
   }, [messages]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSendMessage = () => {
@@ -126,7 +109,7 @@ export default function ChatRoomPage() {
         sender: user?.fullName || 'Anonymous',
         photo: user?.imageUrl || null,
         userId: user?.id || null,
-        timestamp: new Date().toISOString(), // Add timestamp
+        timestamp: new Date().toISOString()
       };
       console.log('📤 Sending message payload:', payload);
       socket.emit('chatMessage', payload);
@@ -140,6 +123,22 @@ export default function ChatRoomPage() {
       socket.disconnect();
     }
     router.push('/dashboard');
+  };
+
+  const handleEmojiClick = (msg: any, emoji: string) => {
+    console.log(`🧑‍💻 Emoji '${emoji}' clicked on message:`, msg);
+    if (socket) {
+      const payload = {
+        roomId,
+        messageId: msg.id || null,
+        emoji,
+        messageContent: msg.message,
+        sender: user?.fullName || 'Anonymous'
+      };
+      console.log('Emitting emojiReaction:', payload);
+      console.log('Socket connected:', socket.connected);
+      socket.emit('emojiReaction', payload);
+    }
   };
 
   if (!isSignedIn) return <Loading />;
@@ -176,8 +175,9 @@ export default function ChatRoomPage() {
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border ${msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
-                  } transition-all duration-300 hover:shadow-md relative group`}
+                className={`p-3 rounded-lg border ${
+                  msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
+                } transition-all duration-300 hover:shadow-md relative group`}
               >
                 <div className="flex items-start gap-3">
                   {msg.photo && (
@@ -207,13 +207,13 @@ export default function ChatRoomPage() {
                   </div>
                 </div>
 
-                {/* Emoji Reaction Selector (visible on hover) */}
+                {/* Emoji Reaction Selector */}
                 <div className="absolute top-12 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow-md p-1 flex gap-1">
                   {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
                     <button
                       key={emoji}
                       className="text-lg hover:scale-125 transition-transform"
-                      onClick={() => alert(`Clicked on ${emoji} for message ${msg.message}`)}
+                      onClick={() => handleEmojiClick(msg, emoji)}
                     >
                       {emoji}
                     </button>
@@ -221,7 +221,6 @@ export default function ChatRoomPage() {
                 </div>
               </div>
             ))}
-
             <div ref={messagesEndRef} />
           </div>
         </div>

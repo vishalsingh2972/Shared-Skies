@@ -25,6 +25,10 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  socket.onAny((event, ...args) => {
+    console.log(`🚨 Received event: ${event}`, args);
+  });
+
   socket.on('joinRoom', (roomId) => {
     console.log(`User ${socket.id} joined room: ${roomId}`);
     socket.join(roomId);
@@ -54,6 +58,12 @@ io.on('connection', (socket) => {
 
     // Broadcast after saving
     io.to(data.roomId).emit('chatMessage', data);
+  });
+
+  socket.on('emojiReaction', (reactionPayload) => {
+    console.log('🎉 Received emoji reaction:', reactionPayload);
+    // You can also broadcast or save to DB here:
+    io.to(reactionPayload.roomId).emit('emojiReaction', reactionPayload);
   });
 
   socket.on('leaveRoom', (roomId) => {
