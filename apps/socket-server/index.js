@@ -86,7 +86,7 @@ io.on('connection', (socket) => {
     const emojiData = reactions[reactionPayload.emoji];
     const userId = reactionPayload.userId || reactionPayload.sender;
 
-    // Always increment count when user clicks
+    // Always increment count when user clicks ~ not working need to check
     emojiData.count++;
     emojiData.users.add(userId);
 
