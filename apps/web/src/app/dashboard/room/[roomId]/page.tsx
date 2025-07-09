@@ -18,13 +18,13 @@ export default function ChatRoomPage() {
   const { roomId } = useParams();
   const { isSignedIn, user } = useUser();
   const router = useRouter();
-  
+
   const [room, setRoom] = useState<{ id: string; mood: string } | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [socket, setSocket] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  
+
   // Store user color assignments
   const [userColors, setUserColors] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -34,7 +34,7 @@ export default function ChatRoomPage() {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) {
       return 'just now';
     } else if (diffInMinutes < 60) {
@@ -44,9 +44,9 @@ export default function ChatRoomPage() {
       return `${hours}h ago`;
     } else {
       // Show date for older messages
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     }
   };
@@ -93,17 +93,17 @@ export default function ChatRoomPage() {
   useEffect(() => {
     const newUserColors = { ...userColors };
     let changed = false;
-    
+
     messages.forEach(msg => {
       if (msg.userId && !newUserColors[msg.userId]) {
         // Assign a color based on user ID hash
-        const colorIndex = [...msg.userId].reduce((sum, char) => 
+        const colorIndex = [...msg.userId].reduce((sum, char) =>
           sum + char.charCodeAt(0), 0) % USER_COLORS.length;
         newUserColors[msg.userId] = USER_COLORS[colorIndex];
         changed = true;
       }
     });
-    
+
     if (changed) {
       setUserColors(newUserColors);
     }
@@ -171,12 +171,13 @@ export default function ChatRoomPage() {
               This is a {room.mood.toLowerCase()} themed room. Be respectful and enjoy the conversation!
             </p>
           </div>
-          
+
           <div className="space-y-3">
             {messages.map((msg, idx) => (
-              <div 
-                key={idx} 
-                className={`p-3 rounded-lg border ${msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'} transition-all duration-300 hover:shadow-md`}
+              <div
+                key={idx}
+                className={`p-3 rounded-lg border ${msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
+                  } transition-all duration-300 hover:shadow-md relative group`}
               >
                 <div className="flex items-start gap-3">
                   {msg.photo && (
@@ -205,8 +206,22 @@ export default function ChatRoomPage() {
                     <div className="mt-1 text-gray-700">{msg.message}</div>
                   </div>
                 </div>
+
+                {/* Emoji Reaction Selector (visible on hover) */}
+                <div className="absolute top-12 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow-md p-1 flex gap-1">
+                  {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
+                    <button
+                      key={emoji}
+                      className="text-lg hover:scale-125 transition-transform"
+                      onClick={() => alert(`Clicked on ${emoji} for message ${msg.message}`)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
+
             <div ref={messagesEndRef} />
           </div>
         </div>
