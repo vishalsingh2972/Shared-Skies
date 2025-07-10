@@ -20,12 +20,13 @@ type ReactionData = {
 
 type Message = {
   id?: string;
-  message: string;
+  message?: string;
   sender: string;
   photo?: string;
   userId?: string;
   timestamp?: string;
   reactions?: Record<string, ReactionData>;
+  audioUrl?: string;
 };
 
 type User = {
@@ -34,6 +35,12 @@ type User = {
   photo?: string;
   userId?: string;
 };
+
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
 
 export default function ChatRoomPage() {
   const { roomId } = useParams();
@@ -52,6 +59,11 @@ export default function ChatRoomPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
   const popupRef = useRef<HTMLDivElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [showMicTip, setShowMicTip] = useState(false);
+  const [isMicHovered, setIsMicHovered] = useState(false);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -64,6 +76,60 @@ export default function ChatRoomPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const startRecording = async () => {
+    try {
+      setShowMicTip(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        if (socket) {
+          const payload = {
+            roomId,
+            audioUrl,
+            sender: user?.fullName || 'Anonymous',
+            photo: user?.imageUrl || null,
+            userId: user?.id || null,
+          };
+          socket.emit('audioMessage', payload);
+        }
+
+        stream.getTracks().forEach(track => track.stop());
+        setAudioChunks([]);
+      };
+
+      setTimeout(() => {
+        if (isRecording) {
+          stopRecording();
+        }
+      }, 120000);
+
+      recorder.start();
+      setIsRecording(true);
+      setAudioChunks(chunks);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setShowMicTip(false);
+    }
   };
 
   useEffect(() => {
@@ -104,7 +170,6 @@ export default function ChatRoomPage() {
       const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL as string);
       setSocket(newSocket);
 
-      // Join room with user data
       newSocket.emit('joinRoom', roomId, {
         userId: user.id,
         name: user.fullName,
@@ -113,6 +178,10 @@ export default function ChatRoomPage() {
 
       newSocket.on('chatMessage', (msg: Message) => {
         setMessages((prev) => [...prev, msg]);
+      });
+
+      newSocket.on('audioMessage', (audioMsg: Message) => {
+        setMessages((prev) => [...prev, audioMsg]);
       });
 
       newSocket.on('emojiReaction', (reaction) => {
@@ -166,6 +235,20 @@ export default function ChatRoomPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      messages.forEach(msg => {
+        if (msg.audioUrl) {
+          URL.revokeObjectURL(msg.audioUrl);
+        }
+      });
+
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+      }
+    };
+  }, [messages, mediaRecorder, isRecording]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -278,7 +361,6 @@ export default function ChatRoomPage() {
                       </span>
                     </div>
                   ))}
-
                 </div>
               </div>
             </div>
@@ -299,10 +381,10 @@ export default function ChatRoomPage() {
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`group p-3 rounded-lg ${msg.userId === user?.id ?
+              className={`group p-3 rounded-lg relative ${msg.userId === user?.id ?
                 'ml-auto bg-indigo-100 max-w-[80%]' :
                 'mr-auto bg-white max-w-[80%]'} 
-        border border-gray-100 transition-all duration-200 hover:border-gray-200`}
+                border border-gray-100 transition-all duration-200 hover:border-gray-200`}
             >
               <div className="flex items-start gap-3">
                 {msg.photo && (
@@ -326,25 +408,56 @@ export default function ChatRoomPage() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 text-gray-800">
-                    {msg.message}
-                  </div>
-                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {Object.entries(msg.reactions).map(([emoji, data]) => (
-                        <button
-                          key={emoji}
-                          onClick={() => handleEmojiClick(msg, emoji)}
-                          className="text-xs px-1.5 py-0.5 rounded-full bg-white border border-gray-200 
-                    hover:bg-gray-50 flex items-center gap-0.5 transition-colors"
-                        >
-                          <span className="text-xs">{emoji}</span>
-                          <span className="text-[0.65rem] font-medium">{(data as ReactionData).count}</span>
-                        </button>
-                      ))}
+                  
+                  {msg.audioUrl && (
+                    <div className="mt-2">
+                      <audio
+                        controls
+                        src={msg.audioUrl}
+                        className="w-full max-w-xs"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Voice message
+                      </div>
                     </div>
                   )}
+                  
+                  {msg.message && (
+                    <>
+                      <div className="mt-1 text-gray-800">
+                        {msg.message}
+                      </div>
+                      {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {Object.entries(msg.reactions).map(([emoji, data]) => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleEmojiClick(msg, emoji)}
+                              className="text-xs px-1.5 py-0.5 rounded-full bg-white border border-gray-200 
+                              hover:bg-gray-50 flex items-center gap-0.5 transition-colors"
+                            >
+                              <span className="text-xs">{emoji}</span>
+                              <span className="text-[0.65rem] font-medium">{(data as ReactionData).count}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
+              </div>
+              
+              {/* Emoji Reaction Buttons (appear on hover) */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    className="text-xs hover:scale-125 transition-transform bg-white rounded-full p-1 shadow-sm"
+                    onClick={() => handleEmojiClick(msg, emoji)}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
@@ -378,6 +491,52 @@ export default function ChatRoomPage() {
               className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black"
               placeholder="Type your message..."
             />
+            <div className="relative group">
+              <button
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+                onMouseEnter={() => setIsMicHovered(true)}
+                onMouseLeave={() => setIsMicHovered(false)}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
+                className={`p-3 rounded-full ${
+                  isRecording 
+                    ? 'bg-red-500 animate-pulse' 
+                    : isMicHovered 
+                      ? 'bg-gray-600' 
+                      : 'bg-black hover:bg-gray-700'
+                } transition duration-200 flex items-center justify-center`}
+                aria-label="Hold to record audio"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                  />
+                </svg>
+              </button>
+              {!isRecording && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  Press & hold to record
+                </div>
+              )}
+              {isRecording && (
+                <div className="absolute -top-2 -right-2 flex items-center">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleSendMessage}
               className="bg-indigo-600 text-white rounded-full px-6 py-3 hover:bg-indigo-700 transition duration-200 flex items-center justify-center"
@@ -385,6 +544,11 @@ export default function ChatRoomPage() {
               <span>Send</span>
             </button>
           </div>
+          {showMicTip && (
+            <div className="mt-2 text-center text-sm text-gray-500">
+              Hold to record, release to send
+            </div>
+          )}
         </div>
       </footer>
     </div>
