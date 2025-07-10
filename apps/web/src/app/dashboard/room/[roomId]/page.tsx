@@ -39,6 +39,8 @@ export default function ChatRoomPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [userColors, setUserColors] = useState<Record<string, string>>({});
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const formatTimestamp = (timestamp: string) => {
@@ -81,12 +83,10 @@ export default function ChatRoomPage() {
       newSocket.emit('joinRoom', roomId);
 
       newSocket.on('chatMessage', (msg: Message) => {
-        console.log('📥 Received message from server:', msg);
         setMessages((prev) => [...prev, msg]);
       });
 
-      newSocket.on('emojiReaction', (reaction: { messageContent: string; originalSender: string; emoji: string; count: number; users: any[] }) => {
-        console.log('🎉 Emoji Reaction Received:', reaction);
+      newSocket.on('emojiReaction', (reaction) => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) => {
             if (msg.message === reaction.messageContent && msg.sender === reaction.originalSender) {
@@ -101,6 +101,9 @@ export default function ChatRoomPage() {
           })
         );
       });
+
+      newSocket.on('typing', () => setIsTyping(true));
+      newSocket.on('stopTyping', () => setIsTyping(false));
 
       return () => {
         newSocket.disconnect();
@@ -139,9 +142,9 @@ export default function ChatRoomPage() {
         userId: user?.id || null,
         timestamp: new Date().toISOString()
       };
-      console.log('📤 Sending message payload:', payload);
       socket.emit('chatMessage', payload);
       setNewMessage('');
+      socket.emit('stopTyping', { roomId, user: user?.fullName });
     }
   };
 
@@ -154,7 +157,6 @@ export default function ChatRoomPage() {
   };
 
   const handleEmojiClick = (msg: Message, emoji: string) => {
-    console.log(`🧑‍💻 Emoji '${emoji}' clicked on message:`, msg);
     if (socket) {
       const payload = {
         roomId,
@@ -165,8 +167,18 @@ export default function ChatRoomPage() {
         originalSender: msg.sender,
         userId: user?.id || null,
       };
-      console.log('Emitting emojiReaction:', payload);
       socket.emit('emojiReaction', payload);
+    }
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    if (socket) {
+      socket.emit('typing', { roomId, user: user?.fullName });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stopTyping', { roomId, user: user?.fullName });
+      }, 2000);
     }
   };
 
@@ -185,14 +197,12 @@ export default function ChatRoomPage() {
           className="bg-white text-indigo-700 rounded-full px-4 py-2 hover:bg-indigo-100 transition duration-200 flex items-center"
         >
           <span>Leave Room</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-          </svg>
         </button>
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto bg-gray-100">
         <div className="max-w-3xl mx-auto">
+          {/* Welcome Message */}
           <div className="bg-white rounded-lg shadow p-4 mb-4">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">Welcome to the chat!</h2>
             <p className="text-gray-600">
@@ -200,6 +210,7 @@ export default function ChatRoomPage() {
             </p>
           </div>
 
+          {/* Messages */}
           <div className="space-y-3">
             {messages.map((msg, idx) => (
               <div
@@ -232,13 +243,13 @@ export default function ChatRoomPage() {
                       )}
                     </div>
                     <div className="mt-1 text-gray-700">{msg.message}</div>
-                    {/* Reaction */}
+                    {/* Reactions */}
                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {Object.entries(msg.reactions).map(([emoji, data]) => (
                           <div
                             key={emoji}
-                            className="bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                            className="bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 text-sm flex items-center gap-1 cursor-pointer"
                             onClick={() => handleEmojiClick(msg, emoji)}
                           >
                             <span>{emoji}</span>
@@ -249,8 +260,7 @@ export default function ChatRoomPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Emoji Reaction Selector */}
+                {/* Emoji Selector */}
                 <div className="absolute top-12 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow-md p-1 flex gap-1">
                   {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
                     <button
@@ -270,29 +280,37 @@ export default function ChatRoomPage() {
       </main>
 
       <footer className="p-4 bg-white border-t border-gray-200">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black"
-            placeholder="Type your message..."
-          />
-          <button
-            onClick={handleSendMessage}
-            className="bg-indigo-600 text-white rounded-full px-6 py-3 hover:bg-indigo-700 transition duration-200 flex items-center justify-center"
-          >
-            <span>Send</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-            </svg>
-          </button>
+        <div className="max-w-3xl mx-auto">
+          {isTyping && (
+            <button
+              type="button"
+              disabled
+              className="mb-2 bg-red-600 text-white text-center py-2 rounded-lg shadow animate-pulse w-full cursor-default"
+            >
+              Typing...
+            </button>
+          )}
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={handleTyping}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black"
+              placeholder="Type your message..."
+            />
+            <button
+              onClick={handleSendMessage}
+              className="bg-indigo-600 text-white rounded-full px-6 py-3 hover:bg-indigo-700 transition duration-200 flex items-center justify-center"
+            >
+              <span>Send</span>
+            </button>
+          </div>
         </div>
       </footer>
     </div>

@@ -36,6 +36,14 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
+  socket.on('typing', (data) => {
+    socket.to(data.roomId).emit('typing', { user: data.user });
+  });
+
+  socket.on('stopTyping', (data) => {
+    socket.to(data.roomId).emit('stopTyping', { user: data.user });
+  });
+
   socket.on('chatMessage', async (data) => {
     console.log('Received message payload from client:', data);
 
