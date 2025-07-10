@@ -408,7 +408,7 @@ export default function ChatRoomPage() {
                       </span>
                     )}
                   </div>
-                  
+
                   {msg.audioUrl && (
                     <div className="mt-2">
                       <audio
@@ -421,7 +421,7 @@ export default function ChatRoomPage() {
                       </div>
                     </div>
                   )}
-                  
+
                   {msg.message && (
                     <>
                       <div className="mt-1 text-gray-800">
@@ -434,10 +434,10 @@ export default function ChatRoomPage() {
                               key={emoji}
                               onClick={() => handleEmojiClick(msg, emoji)}
                               className="text-xs px-1.5 py-0.5 rounded-full bg-white border border-gray-200 
-                              hover:bg-gray-50 flex items-center gap-0.5 transition-colors"
+        hover:bg-gray-50 flex items-center gap-0.5 transition-colors"
                             >
                               <span className="text-xs">{emoji}</span>
-                              <span className="text-[0.65rem] font-medium">{(data as ReactionData).count}</span>
+                              <span className="text-[0.65rem] font-medium text-black">{(data as ReactionData).count}</span>
                             </button>
                           ))}
                         </div>
@@ -446,9 +446,9 @@ export default function ChatRoomPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Emoji Reaction Buttons (appear on hover) */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+              <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                 {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
                   <button
                     key={emoji}
@@ -499,13 +499,12 @@ export default function ChatRoomPage() {
                 onMouseLeave={() => setIsMicHovered(false)}
                 onTouchStart={startRecording}
                 onTouchEnd={stopRecording}
-                className={`p-3 rounded-full ${
-                  isRecording 
-                    ? 'bg-red-500 animate-pulse' 
-                    : isMicHovered 
-                      ? 'bg-gray-600' 
-                      : 'bg-black hover:bg-gray-700'
-                } transition duration-200 flex items-center justify-center`}
+                className={`p-3 rounded-full ${isRecording
+                  ? 'bg-red-500 animate-pulse'
+                  : isMicHovered
+                    ? 'bg-gray-600'
+                    : 'bg-black hover:bg-gray-700'
+                  } transition duration-200 flex items-center justify-center`}
                 aria-label="Hold to record audio"
               >
                 <svg
