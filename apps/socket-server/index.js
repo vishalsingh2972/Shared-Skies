@@ -11,8 +11,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: '*',
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST'],
+  },
 });
 
 app.use(cors());
@@ -21,8 +21,9 @@ app.get('/', (req, res) => {
   res.send('Socket.IO Chat Server Running!');
 });
 
-// Add this to track emoji reactions in memory
+// In-memory reactions
 const messageReactions = new Map();
+const onlineUsersPerRoom = new Map();
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
@@ -31,9 +32,19 @@ io.on('connection', (socket) => {
     console.log(`🚨 Received event: ${event}`, args);
   });
 
-  socket.on('joinRoom', (roomId) => {
-    console.log(`User ${socket.id} joined room: ${roomId}`);
+  socket.on('joinRoom', (roomId, user) => {
+    console.log(`User ${socket.id} joined room: ${roomId}`, user);
     socket.join(roomId);
+    socket.data.user = user;
+    socket.data.roomId = roomId;
+
+    if (!onlineUsersPerRoom.has(roomId)) {
+      onlineUsersPerRoom.set(roomId, new Map());
+    }
+
+    const roomUsers = onlineUsersPerRoom.get(roomId);
+    roomUsers.set(socket.id, user);
+    io.to(roomId).emit('currentUsers', Array.from(roomUsers.values()));
   });
 
   socket.on('typing', (data) => {
@@ -45,14 +56,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMessage', async (data) => {
-    console.log('Received message payload from client:', data);
-
-    // Add server timestamp if not present (fallback)     
+    console.log('Received message payload:', data);
     if (!data.timestamp) {
       data.timestamp = new Date().toISOString();
     }
 
-    // Save message to DB     
     try {
       const savedMessage = await prisma.message.create({
         data: {
@@ -61,61 +69,56 @@ io.on('connection', (socket) => {
           content: data.message,
         },
       });
-      console.log('✅ Message saved to DB:', savedMessage);
+      console.log('✅ Message saved:', savedMessage);
     } catch (error) {
       console.error('❌ Failed to save message:', error);
     }
 
-    // Broadcast after saving     
     io.to(data.roomId).emit('chatMessage', data);
   });
 
-  socket.on('emojiReaction', (reactionPayload) => {
-    console.log('🎉 Received emoji reaction:', reactionPayload);
-
-    // Create a unique key for the message
-    const messageKey = `${reactionPayload.messageContent}_${reactionPayload.originalSender}`;
-
-    // Initialize reactions for this message if not exists
-    if (!messageReactions.has(messageKey)) {
-      messageReactions.set(messageKey, {});
+  socket.on('emojiReaction', (payload) => {
+    console.log('🎉 Emoji reaction received:', payload);
+    const key = `${payload.messageContent}_${payload.originalSender}`;
+    if (!messageReactions.has(key)) {
+      messageReactions.set(key, {});
     }
-
-    const reactions = messageReactions.get(messageKey);
-
-    // Initialize this emoji if not exists
-    if (!reactions[reactionPayload.emoji]) {
-      reactions[reactionPayload.emoji] = {
-        count: 0,
-        users: new Set()
-      };
+    const reactions = messageReactions.get(key);
+    if (!reactions[payload.emoji]) {
+      reactions[payload.emoji] = { count: 0, users: new Set() };
     }
+    const reaction = reactions[payload.emoji];
+    reaction.count++;
+    reaction.users.add(payload.userId);
 
-    const emojiData = reactions[reactionPayload.emoji];
-    const userId = reactionPayload.userId || reactionPayload.sender;
-
-    // Always increment count when user clicks ~ not working need to check
-    emojiData.count++;
-    emojiData.users.add(userId);
-
-    // Prepare response payload
-    const responsePayload = {
-      ...reactionPayload,
-      count: emojiData.count,
-      users: Array.from(emojiData.users)
+    const response = {
+      ...payload,
+      count: reaction.count,
+      users: Array.from(reaction.users),
     };
-
-    // Broadcast the reaction with count
-    io.to(reactionPayload.roomId).emit('emojiReaction', responsePayload);
+    io.to(payload.roomId).emit('emojiReaction', response);
   });
 
   socket.on('leaveRoom', (roomId) => {
     console.log(`User ${socket.id} left room: ${roomId}`);
     socket.leave(roomId);
+    const roomUsers = onlineUsersPerRoom.get(roomId);
+    if (roomUsers) {
+      roomUsers.delete(socket.id);
+      io.to(roomId).emit('currentUsers', Array.from(roomUsers.values()));
+    }
   });
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    const { roomId } = socket.data || {};
+    if (roomId) {
+      const roomUsers = onlineUsersPerRoom.get(roomId);
+      if (roomUsers) {
+        roomUsers.delete(socket.id);
+        io.to(roomId).emit('currentUsers', Array.from(roomUsers.values()));
+      }
+    }
   });
 });
 

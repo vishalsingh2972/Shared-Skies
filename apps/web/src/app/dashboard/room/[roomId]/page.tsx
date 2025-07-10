@@ -252,10 +252,9 @@ export default function ChatRoomPage() {
               className="absolute right-0 top-12 z-50 bg-white rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto animate-fadeIn"
             >
               <div className="p-4 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-800">Room Stats</h3>
+                <h3 className="text-sm font-semibold text-gray-800">ONLINE USERS ({onlineUsers.length})</h3>
               </div>
               <div className="p-3">
-                <h4 className="text-xs font-medium text-gray-500 mb-2">ONLINE USERS ({onlineUsers.length})</h4>
                 <div className="space-y-2">
                   {onlineUsers.map((user) => (
                     <div key={user.id} className="flex items-center gap-2 p-1">
@@ -272,9 +271,6 @@ export default function ChatRoomPage() {
                       )}
                       <span className="text-sm text-gray-700 truncate flex-1">
                         {user.name}
-                        {user.id === user?.id && (
-                          <span className="ml-1 text-xs text-blue-500">(you)</span>
-                        )}
                       </span>
                     </div>
                   ))}
