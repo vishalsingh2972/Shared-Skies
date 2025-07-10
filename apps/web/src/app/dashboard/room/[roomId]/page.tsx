@@ -39,9 +39,9 @@ export default function ChatRoomPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [userColors, setUserColors] = useState<Record<string, string>>({});
-  const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -102,8 +102,13 @@ export default function ChatRoomPage() {
         );
       });
 
-      newSocket.on('typing', () => setIsTyping(true));
-      newSocket.on('stopTyping', () => setIsTyping(false));
+      newSocket.on('typing', (payload) => {
+        setTypingUser(payload.user);
+      });
+
+      newSocket.on('stopTyping', () => {
+        setTypingUser(null);
+      });
 
       return () => {
         newSocket.disconnect();
@@ -281,12 +286,14 @@ export default function ChatRoomPage() {
 
       <footer className="p-4 bg-white border-t border-gray-200">
         <div className="max-w-3xl mx-auto">
-          {isTyping && (
+          {typingUser && (
             <div className="flex items-center justify-center gap-2 mb-2">
               <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
               <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
               <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
-              <span className="ml-2 text-red-600 font-medium">Typing...</span>
+              <span className="ml-2 text-red-600 font-medium">
+                {typingUser} is typing...
+              </span>
             </div>
           )}
           <div className="flex gap-3">
