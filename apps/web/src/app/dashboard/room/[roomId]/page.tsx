@@ -294,77 +294,60 @@ export default function ChatRoomPage() {
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto bg-gray-100">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Welcome to the chat!</h2>
-            <p className="text-gray-600">
-              This is a {room.mood.toLowerCase()} themed room. Be respectful and enjoy the conversation!
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded-lg border ${msg.userId && userColors[msg.userId] ? userColors[msg.userId] : 'bg-gray-100 border-gray-300'
-                  } transition-all duration-300 hover:shadow-md relative group`}
-              >
-                <div className="flex items-start gap-3">
-                  {msg.photo && (
-                    <img
-                      src={msg.photo}
-                      alt={msg.sender}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between">
-                      <div className="flex items-baseline gap-2">
-                        <div className="font-semibold text-gray-800">{msg.sender}</div>
-                        {msg.userId === user?.id && (
-                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
-                            You
-                          </span>
-                        )}
-                      </div>
-                      {msg.timestamp && (
-                        <span className="text-xs text-gray-500 ml-2">
-                          {formatTimestamp(msg.timestamp)}
-                        </span>
+        <div className="space-y-2">
+          {messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`group p-3 rounded-lg ${msg.userId === user?.id ?
+                'ml-auto bg-indigo-100 max-w-[80%]' :
+                'mr-auto bg-white max-w-[80%]'} 
+        border border-gray-100 transition-all duration-200 hover:border-gray-200`}
+            >
+              <div className="flex items-start gap-3">
+                {msg.photo && (
+                  <img
+                    src={msg.photo}
+                    alt={msg.sender}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white opacity-80 group-hover:opacity-100 transition-opacity"
+                  />
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-gray-800">
+                      {msg.sender}
+                      {msg.userId === user?.id && (
+                        <span className="ml-1 text-xs font-normal text-gray-600"> (You)</span>
                       )}
                     </div>
-                    <div className="mt-1 text-gray-700">{msg.message}</div>
-                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {Object.entries(msg.reactions).map(([emoji, data]) => (
-                          <div
-                            key={emoji}
-                            className="bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 text-sm flex items-center gap-1 cursor-pointer"
-                            onClick={() => handleEmojiClick(msg, emoji)}
-                          >
-                            <span>{emoji}</span>
-                            <span className="text-gray-600">{(data as ReactionData).count}</span>
-                          </div>
-                        ))}
-                      </div>
+                    {msg.timestamp && (
+                      <span className="text-xs text-gray-600">
+                        {formatTimestamp(msg.timestamp)}
+                      </span>
                     )}
                   </div>
-                </div>
-                <div className="absolute top-12 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow-md p-1 flex gap-1">
-                  {['❤️', '😂', '👍', '😮', '🔥'].map((emoji) => (
-                    <button
-                      key={emoji}
-                      className="text-lg hover:scale-125 transition-transform"
-                      onClick={() => handleEmojiClick(msg, emoji)}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                  <div className="mt-1 text-gray-800">
+                    {msg.message}
+                  </div>
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {Object.entries(msg.reactions).map(([emoji, data]) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleEmojiClick(msg, emoji)}
+                          className="text-xs px-1.5 py-0.5 rounded-full bg-white border border-gray-200 
+                    hover:bg-gray-50 flex items-center gap-0.5 transition-colors"
+                        >
+                          <span className="text-xs">{emoji}</span>
+                          <span className="text-[0.65rem] font-medium">{(data as ReactionData).count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
         </div>
       </main>
 
