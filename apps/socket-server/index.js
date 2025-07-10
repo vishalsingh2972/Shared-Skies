@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 });
 
 // Add this to track emoji reactions in memory
-const messageReactions = new Map(); // messageId -> { emoji -> { count, users: Set } }
+const messageReactions = new Map();
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
