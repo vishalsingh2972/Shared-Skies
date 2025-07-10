@@ -282,13 +282,12 @@ export default function ChatRoomPage() {
       <footer className="p-4 bg-white border-t border-gray-200">
         <div className="max-w-3xl mx-auto">
           {isTyping && (
-            <button
-              type="button"
-              disabled
-              className="mb-2 bg-red-600 text-white text-center py-2 rounded-lg shadow animate-pulse w-full cursor-default"
-            >
-              Typing...
-            </button>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
+              <span className="ml-2 text-red-600 font-medium">Typing...</span>
+            </div>
           )}
           <div className="flex gap-3">
             <input
