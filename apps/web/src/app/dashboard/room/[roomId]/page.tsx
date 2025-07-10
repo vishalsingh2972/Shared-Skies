@@ -32,6 +32,7 @@ type User = {
   id: string;
   name: string;
   photo?: string;
+  userId?: string;
 };
 
 export default function ChatRoomPage() {
@@ -256,24 +257,28 @@ export default function ChatRoomPage() {
               </div>
               <div className="p-3">
                 <div className="space-y-2">
-                  {onlineUsers.map((user) => (
-                    <div key={user.id} className="flex items-center gap-2 p-1">
-                      {user.photo ? (
+                  {onlineUsers.map((u) => (
+                    <div key={u.id} className="flex items-center gap-2 p-1">
+                      {u.photo ? (
                         <img
-                          src={user.photo}
-                          alt={user.name}
+                          src={u.photo}
+                          alt={u.name}
                           className="w-6 h-6 rounded-full object-cover"
                         />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
-                          {user.name.charAt(0).toUpperCase()}
+                          {u.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <span className="text-sm text-gray-700 truncate flex-1">
-                        {user.name}
+                        {u.name}
+                        {u.userId === user?.id && <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 text-xs font-medium border border-blue-100">
+                          You
+                        </span>}
                       </span>
                     </div>
                   ))}
+
                 </div>
               </div>
             </div>
