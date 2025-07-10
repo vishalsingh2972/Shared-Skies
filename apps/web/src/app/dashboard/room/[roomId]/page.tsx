@@ -50,6 +50,7 @@ export default function ChatRoomPage() {
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -63,6 +64,19 @@ export default function ChatRoomPage() {
       minute: '2-digit'
     });
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setShowPopup(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -88,7 +102,7 @@ export default function ChatRoomPage() {
     if (roomId && user) {
       const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL as string);
       setSocket(newSocket);
-      
+
       // Join room with user data
       newSocket.emit('joinRoom', roomId, {
         userId: user.id,
@@ -220,7 +234,7 @@ export default function ChatRoomPage() {
         <h1 className="text-xl font-bold text-white text-center flex-1">
           {room.mood} Room
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-8 relative">
           <button
             onClick={togglePopup}
             className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition duration-200 flex items-center justify-center relative"
@@ -231,63 +245,53 @@ export default function ChatRoomPage() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
             </span>
           </button>
-          <button
-            onClick={handleLeaveRoom}
-            className="bg-white text-indigo-700 rounded-full px-4 py-2 hover:bg-indigo-100 transition duration-200 flex items-center"
-          >
-            <span>Leave Room</span>
-          </button>
-        </div>
-      </header>
 
-      {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl animate-fadeIn max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Room Stats</h3>
-              <button
-                onClick={togglePopup}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Online Users ({onlineUsers.length})</h4>
-                <div className="space-y-3">
+          {showPopup && (
+            <div
+              ref={popupRef}
+              className="absolute right-0 top-12 z-50 bg-white rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto animate-fadeIn"
+            >
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-800">Room Stats</h3>
+              </div>
+              <div className="p-3">
+                <h4 className="text-xs font-medium text-gray-500 mb-2">ONLINE USERS ({onlineUsers.length})</h4>
+                <div className="space-y-2">
                   {onlineUsers.map((user) => (
-                    <div key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <div key={user.id} className="flex items-center gap-2 p-1">
                       {user.photo ? (
                         <img
                           src={user.photo}
                           alt={user.name}
-                          className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
+                          className="w-6 h-6 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500 text-lg">
-                            {user.name.charAt(0).toUpperCase()}
-                          </span>
+                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                          {user.name.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div>
-                        <p className="font-medium text-gray-800">{user.name}</p>
-                        <p className="text-xs text-gray-500">Active now</p>
-                      </div>
-                      {user.id === user?.id && (
-                        <span className="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
-                          You
-                        </span>
-                      )}
+                      <span className="text-sm text-gray-700 truncate flex-1">
+                        {user.name}
+                        {user.id === user?.id && (
+                          <span className="ml-1 text-xs text-blue-500">(you)</span>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          <button
+            onClick={handleLeaveRoom}
+            className="bg-white text-indigo-700 rounded-full px-4 py-2 transition duration-200 flex items-center 
+             hover:bg-red-500 hover:text-white active:bg-red-600 active:text-white"
+          >
+            <span>Leave Room</span>
+          </button>
         </div>
-      )}
+      </header>
 
       <main className="flex-1 p-4 overflow-y-auto bg-gray-100">
         <div className="max-w-3xl mx-auto">
