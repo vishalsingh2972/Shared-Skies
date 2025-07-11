@@ -13,6 +13,7 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
+  maxHttpBufferSize: 1e7, // 10MB for audio files
 });
 
 app.use(cors());
@@ -99,8 +100,25 @@ io.on('connection', (socket) => {
     io.to(payload.roomId).emit('emojiReaction', response);
   });
 
-  socket.on('audioMessage', (payload) => {
+  socket.on('audioMessage', async (payload) => {
     console.log('🎙️ Audio message received:', payload);
+
+    try {
+      // Save audio message to database if needed
+      if (payload.userId && payload.roomId) {
+        await prisma.message.create({
+          data: {
+            roomId: payload.roomId,
+            userId: payload.userId,
+            content: '[Audio Message]', // Placeholder text for audio
+          },
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to save audio message:', error);
+    }
+
+    // Broadcast the audio message to all users in the room
     io.to(payload.roomId).emit('audioMessage', payload);
   });
 

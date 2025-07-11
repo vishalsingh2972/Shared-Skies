@@ -26,7 +26,8 @@ type Message = {
   userId?: string;
   timestamp?: string;
   reactions?: Record<string, ReactionData>;
-  audioUrl?: string;
+  audioData?: string; // Base64 audio data
+  isAudio?: boolean;
 };
 
 type User = {
@@ -61,9 +62,9 @@ export default function ChatRoomPage() {
   const popupRef = useRef<HTMLDivElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [showMicTip, setShowMicTip] = useState(false);
   const [isMicHovered, setIsMicHovered] = useState(false);
+  const [audioUrls, setAudioUrls] = useState<Map<string, string>>(new Map());
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -78,11 +79,35 @@ export default function ChatRoomPage() {
     });
   };
 
+  // Convert base64 to blob URL
+  const base64ToBlob = (base64Data: string, contentType: string) => {
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: contentType });
+  };
+
+  // Convert blob to base64
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        resolve(base64.split(',')[1]); // Remove data:audio/wav;base64, prefix
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const startRecording = async () => {
     try {
       setShowMicTip(true);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       setMediaRecorder(recorder);
 
       const chunks: Blob[] = [];
@@ -91,24 +116,31 @@ export default function ChatRoomPage() {
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
-        const audioUrl = URL.createObjectURL(audioBlob);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
 
-        if (socket) {
-          const payload = {
-            roomId,
-            audioUrl,
-            sender: user?.fullName || 'Anonymous',
-            photo: user?.imageUrl || null,
-            userId: user?.id || null,
-          };
-          socket.emit('audioMessage', payload);
+        try {
+          const base64Data = await blobToBase64(audioBlob);
+
+          if (socket) {
+            const payload = {
+              roomId,
+              audioData: base64Data,
+              sender: user?.fullName || 'Anonymous',
+              photo: user?.imageUrl || null,
+              userId: user?.id || null,
+              timestamp: new Date().toISOString(),
+              isAudio: true
+            };
+            socket.emit('audioMessage', payload);
+          }
+        } catch (error) {
+          console.error('Error processing audio:', error);
         }
 
         stream.getTracks().forEach(track => track.stop());
-        setAudioChunks([]);
       };
 
+      // Auto-stop recording after 2 minutes
       setTimeout(() => {
         if (isRecording) {
           stopRecording();
@@ -117,7 +149,6 @@ export default function ChatRoomPage() {
 
       recorder.start();
       setIsRecording(true);
-      setAudioChunks(chunks);
     } catch (error) {
       console.error('Error starting recording:', error);
       alert('Could not access microphone. Please check permissions.');
@@ -125,11 +156,29 @@ export default function ChatRoomPage() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorder) {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       setIsRecording(false);
       setShowMicTip(false);
     }
+  };
+
+  // Get or create audio URL for a message
+  const getAudioUrl = (msg: Message, index: number) => {
+    const key = `${msg.userId}_${index}_${msg.timestamp}`;
+
+    if (audioUrls.has(key)) {
+      return audioUrls.get(key);
+    }
+
+    if (msg.audioData) {
+      const blob = base64ToBlob(msg.audioData, 'audio/webm');
+      const url = URL.createObjectURL(blob);
+      setAudioUrls(prev => new Map(prev).set(key, url));
+      return url;
+    }
+
+    return null;
   };
 
   useEffect(() => {
@@ -181,6 +230,7 @@ export default function ChatRoomPage() {
       });
 
       newSocket.on('audioMessage', (audioMsg: Message) => {
+        console.log('Received audio message:', audioMsg);
         setMessages((prev) => [...prev, audioMsg]);
       });
 
@@ -236,19 +286,15 @@ export default function ChatRoomPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Cleanup audio URLs when component unmounts
   useEffect(() => {
     return () => {
-      messages.forEach(msg => {
-        if (msg.audioUrl) {
-          URL.revokeObjectURL(msg.audioUrl);
-        }
-      });
-
+      audioUrls.forEach(url => URL.revokeObjectURL(url));
       if (mediaRecorder && isRecording) {
         mediaRecorder.stop();
       }
     };
-  }, [messages, mediaRecorder, isRecording]);
+  }, [audioUrls, mediaRecorder, isRecording]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -284,7 +330,7 @@ export default function ChatRoomPage() {
         roomId,
         messageId: msg.id || null,
         emoji,
-        messageContent: msg.message,
+        messageContent: msg.message || '[Audio Message]',
         sender: user?.fullName || 'Anonymous',
         originalSender: msg.sender,
         userId: user?.id || null,
@@ -409,12 +455,13 @@ export default function ChatRoomPage() {
                     )}
                   </div>
 
-                  {msg.audioUrl && (
+                  {msg.isAudio && msg.audioData && (
                     <div className="mt-2">
                       <audio
                         controls
-                        src={msg.audioUrl}
+                        src={getAudioUrl(msg, idx) || undefined}
                         className="w-full max-w-xs"
+                        preload="metadata"
                       />
                       <div className="text-xs text-gray-500 mt-1">
                         Voice message
