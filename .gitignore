@@ -2,3 +2,4 @@ node_modules
 package-lock.json
 .turbo/
 .env*
+test-socket-client.mjs
