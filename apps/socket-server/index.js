@@ -99,6 +99,11 @@ io.on('connection', (socket) => {
     io.to(payload.roomId).emit('emojiReaction', response);
   });
 
+  socket.on('audioMessage', (payload) => {
+    console.log('🎙️ Audio message received:', payload);
+    io.to(payload.roomId).emit('audioMessage', payload);
+  });
+
   socket.on('leaveRoom', (roomId) => {
     console.log(`User ${socket.id} left room: ${roomId}`);
     socket.leave(roomId);
