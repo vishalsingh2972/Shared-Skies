@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const cron = require('node-cron');
 
 const app = express();
 const server = http.createServer(app);
@@ -149,3 +150,27 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
+
+// Function to delete messages older than 24 hours
+async function deleteOldMessages() {
+  console.log('🧹 Deleting messages older than 24 hours...');
+  try {
+    const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+    const deleted = await prisma.message.deleteMany({
+      where: {
+        createdAt: {
+          lt: cutoffDate
+        }
+      }
+    });
+    console.log(`✅ Cleanup done: Deleted ${deleted.count} old messages. Cutoff: ${cutoffDate}`);
+  } catch (error) {
+    console.error('❌ Error during cleanup:', error);
+  }
+}
+
+// 🕒 Run immediately when server starts
+deleteOldMessages();
+
+// 🕒 Schedule cleanup every hour
+cron.schedule('0 * * * *', deleteOldMessages);
