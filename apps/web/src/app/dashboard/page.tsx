@@ -12,6 +12,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isSignedIn && user) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.id,
+          username: user.username || user.fullName,
+          email: user.primaryEmailAddress?.emailAddress,
+          photo: user.imageUrl
+        })
+      }).catch((err) => console.error('Failed to sync user:', err));
+    }
+  }, [isSignedIn, user]);
+
+  useEffect(() => {
     if (!isSignedIn) {
       router.push('/');
     }
