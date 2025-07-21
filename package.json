@@ -6,6 +6,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "dev:api": "turbo run dev --filter=shared-skies-api",
+    "dev:api2": "cd apps/api && npm run dev",
     "dev:socket": "turbo run dev --filter=shared-skies-socket-server",
     "dev:web": "turbo run dev --filter=shared-skies-web"
   },

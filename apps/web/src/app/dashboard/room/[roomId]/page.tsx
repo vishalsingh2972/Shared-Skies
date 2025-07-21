@@ -269,6 +269,22 @@ export default function ChatRoomPage() {
     }
   }, [roomId, user]);
 
+  // 👉 Fetch and log old room messages from DB on (re)join without logging out
+  useEffect(() => {
+    const fetchOldMessages = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiUrl}/api/messages/${roomId}`);
+        const data = await res.json();
+        console.log('🗂️ Old messages fetched from DB →', data);
+      } catch (error) {
+        console.error('Failed to fetch old messages:', error);
+      }
+    };
+
+    if (roomId) fetchOldMessages();
+  }, [roomId]);
+
   useEffect(() => {
     const newUserColors = { ...userColors };
     let changed = false;
