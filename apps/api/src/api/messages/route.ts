@@ -8,7 +8,7 @@ router.get('/:roomId', async (req, res) => {
   try {
     const messages = await prisma.message.findMany({
       where: { roomId: req.params.roomId },
-      include: { user: { select: { username: true } } },
+      include: { user: { select: { username: true, photo: true } } },
       orderBy: { createdAt: 'asc' }
     });
     

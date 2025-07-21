@@ -288,7 +288,7 @@ useEffect(() => {
         id: msg.id,
         message: msg.content === '[Audio Message]' ? '' : msg.content,
         sender: msg.user?.username || 'Anonymous',
-        photo: undefined,
+        photo: msg.user?.photo || undefined,
         userId: msg.userId,
         timestamp: msg.createdAt,
         isAudio: msg.content === '[Audio Message]'
