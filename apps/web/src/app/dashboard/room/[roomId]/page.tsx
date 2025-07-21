@@ -270,20 +270,39 @@ export default function ChatRoomPage() {
   }, [roomId, user]);
 
   // 👉 Fetch and log old room messages from DB on (re)join without logging out
-  useEffect(() => {
-    const fetchOldMessages = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        const res = await fetch(`${apiUrl}/api/messages/${roomId}`);
-        const data = await res.json();
-        console.log('🗂️ Old messages fetched from DB →', data);
-      } catch (error) {
-        console.error('Failed to fetch old messages:', error);
-      }
-    };
+// Fetch old messages from DB and set them as initial state
+useEffect(() => {
+  const fetchOldMessages = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/messages/${roomId}`);
+      const data = await res.json();
 
-    if (roomId) fetchOldMessages();
-  }, [roomId]);
+      if (!Array.isArray(data)) {
+        console.error('Unexpected response:', data);
+        return;
+      }
+
+      // Transform DB format to UI message format
+      const formattedMessages = data.map((msg: any) => ({
+        id: msg.id,
+        message: msg.content === '[Audio Message]' ? '' : msg.content,
+        sender: msg.user?.username || 'Anonymous',
+        photo: undefined,
+        userId: msg.userId,
+        timestamp: msg.createdAt,
+        isAudio: msg.content === '[Audio Message]'
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Failed to fetch old messages:', error);
+    }
+  };
+
+  if (roomId) fetchOldMessages();
+}, [roomId]);
+
 
   useEffect(() => {
     const newUserColors = { ...userColors };
