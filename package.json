@@ -8,7 +8,10 @@
     "dev:api": "turbo run dev --filter=shared-skies-api",
     "dev:api2": "cd apps/api && npm run dev",
     "dev:socket": "turbo run dev --filter=shared-skies-socket-server",
-    "dev:web": "turbo run dev --filter=shared-skies-web"
+    "dev:web": "turbo run dev --filter=shared-skies-web",
+    "prisma:generate": "turbo run prisma:generate",
+    "prisma:migrate": "turbo run prisma:migrate",
+    "db:seed": "turbo run seed"
   },
   "devDependencies": {
     "turbo": "^1.10.0"

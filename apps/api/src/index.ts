@@ -8,7 +8,7 @@ import { Server } from 'socket.io';
 import roomRoutes from './api/rooms/route';
 import userRoutes from './api/users/route';
 import messageRoutes from './api/messages/route';
-import { prisma } from './lib/prisma';
+import { prisma } from '@shared-skies/database';
 
 const app = express();
 const server = createServer(app);

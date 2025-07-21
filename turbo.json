@@ -12,6 +12,16 @@
     },
     "lint": {
       "dependsOn": ["^lint"]
+    },
+    "prisma:generate": {
+      "cache": false,
+      "outputs": ["node_modules/.prisma/**"]
+    },
+    "prisma:migrate": {
+      "cache": false
+    },
+    "seed": {
+      "cache": false
     }
   }
 }

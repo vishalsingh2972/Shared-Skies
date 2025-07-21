@@ -1,5 +1,5 @@
 import express from 'express';
-import { prisma } from '../../lib/prisma';
+import { prisma } from '@shared-skies/database';
 
 const router = express.Router();
 
