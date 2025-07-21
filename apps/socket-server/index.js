@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { prisma } = require('@shared-skies/database');
+const { rateLimiters, checkRateLimit } = require('@shared-skies/cache');
 const cron = require('node-cron');
 
 const app = express();
@@ -18,11 +19,39 @@ const io = new Server(server, {
 
 app.use(cors());
 
+// Helper function to get socket IP
+const getSocketIP = (socket) => {
+  return socket.handshake.address || socket.conn.remoteAddress || 'unknown';
+};
+
+// Rate limiting wrapper for socket events
+const withRateLimit = async (socket, rateLimiter, callback) => {
+  try {
+    const clientIP = getSocketIP(socket);
+    const result = await checkRateLimit(rateLimiter, clientIP);
+    
+    if (!result.success) {
+      socket.emit('rateLimitError', {
+        error: 'Rate limit exceeded',
+        limit: result.limit,
+        remaining: result.remaining,
+        reset: result.reset,
+      });
+      return;
+    }
+    
+    await callback();
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    socket.emit('error', 'Rate limiting failed');
+  }
+};
+
 app.get('/', (req, res) => {
   res.send('Socket.IO Chat Server Running!');
 });
 
-// In-memory reactions
+// In-memory reactions and users
 const messageReactions = new Map();
 const onlineUsersPerRoom = new Map();
 
@@ -56,70 +85,77 @@ io.on('connection', (socket) => {
     socket.to(data.roomId).emit('stopTyping', { user: data.user });
   });
 
+  // Rate limited chat message
   socket.on('chatMessage', async (data) => {
-    console.log('Received message payload:', data);
-    if (!data.timestamp) {
-      data.timestamp = new Date().toISOString();
-    }
+    await withRateLimit(socket, rateLimiters.messages, async () => {
+      console.log('Received message payload:', data);
+      if (!data.timestamp) {
+        data.timestamp = new Date().toISOString();
+      }
 
-    try {
-      const savedMessage = await prisma.message.create({
-        data: {
-          roomId: data.roomId,
-          userId: data.userId,
-          content: data.message,
-        },
-      });
-      console.log('✅ Message saved:', savedMessage);
-    } catch (error) {
-      console.error('❌ Failed to save message:', error);
-    }
+      try {
+        const savedMessage = await prisma.message.create({
+          data: {
+            roomId: data.roomId,
+            userId: data.userId,
+            content: data.message,
+          },
+        });
+        console.log('✅ Message saved:', savedMessage);
+      } catch (error) {
+        console.error('❌ Failed to save message:', error);
+      }
 
-    io.to(data.roomId).emit('chatMessage', data);
+      io.to(data.roomId).emit('chatMessage', data);
+    });
   });
 
   socket.on('emojiReaction', (payload) => {
-    console.log('🎉 Emoji reaction received:', payload);
-    const key = `${payload.messageContent}_${payload.originalSender}`;
-    if (!messageReactions.has(key)) {
-      messageReactions.set(key, {});
-    }
-    const reactions = messageReactions.get(key);
-    if (!reactions[payload.emoji]) {
-      reactions[payload.emoji] = { count: 0, users: new Set() };
-    }
-    const reaction = reactions[payload.emoji];
-    reaction.count++;
-    reaction.users.add(payload.userId);
+    // Emoji reactions can use the same rate limit as messages
+    withRateLimit(socket, rateLimiters.messages, async () => {
+      console.log('🎉 Emoji reaction received:', payload);
+      const key = `${payload.messageContent}_${payload.originalSender}`;
+      if (!messageReactions.has(key)) {
+        messageReactions.set(key, {});
+      }
+      const reactions = messageReactions.get(key);
+      if (!reactions[payload.emoji]) {
+        reactions[payload.emoji] = { count: 0, users: new Set() };
+      }
+      const reaction = reactions[payload.emoji];
+      reaction.count++;
+      reaction.users.add(payload.userId);
 
-    const response = {
-      ...payload,
-      count: reaction.count,
-      users: Array.from(reaction.users),
-    };
-    io.to(payload.roomId).emit('emojiReaction', response);
+      const response = {
+        ...payload,
+        count: reaction.count,
+        users: Array.from(reaction.users),
+      };
+      io.to(payload.roomId).emit('emojiReaction', response);
+    });
   });
 
+  // Rate limited audio message (more restrictive)
   socket.on('audioMessage', async (payload) => {
-    console.log('🎙️ Audio message received:', payload);
+    await withRateLimit(socket, rateLimiters.audio, async () => {
+      console.log('🎙️ Audio message received:', payload);
 
-    try {
-      // Save audio message to database if needed
-      if (payload.userId && payload.roomId) {
-        await prisma.message.create({
-          data: {
-            roomId: payload.roomId,
-            userId: payload.userId,
-            content: '[Audio Message]', // Placeholder text for audio
-          },
-        });
+      try {
+        if (payload.userId && payload.roomId) {
+          await prisma.message.create({
+            data: {
+              roomId: payload.roomId,
+              userId: payload.userId,
+              content: '[Audio Message]',
+            },
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to save audio message:', error);
       }
-    } catch (error) {
-      console.error('❌ Failed to save audio message:', error);
-    }
 
-    // Broadcast the audio message to all users in the room
-    io.to(payload.roomId).emit('audioMessage', payload);
+      io.to(payload.roomId).emit('audioMessage', payload);
+    });
   });
 
   socket.on('leaveRoom', (roomId) => {
@@ -150,11 +186,11 @@ server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
 
-// Function to delete messages older than 24 hours
+// Cleanup functions remain the same
 async function deleteOldMessages() {
   console.log('🧹 Deleting messages older than 24 hours...');
   try {
-    const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+    const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const deleted = await prisma.message.deleteMany({
       where: {
         createdAt: {
@@ -168,8 +204,5 @@ async function deleteOldMessages() {
   }
 }
 
-// 🕒 Run immediately when server starts
 deleteOldMessages();
-
-// 🕒 Schedule cleanup every hour
 cron.schedule('0 * * * *', deleteOldMessages);

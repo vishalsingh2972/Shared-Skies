@@ -1,10 +1,11 @@
 import express from 'express';
 import { prisma } from '@shared-skies/database';
+import { userSyncRateLimit } from '../../middleware/rateLimiter';
 
 const router = express.Router();
 
-// Get or create user from Clerk
-router.post('/sync', async (req, res) => {
+// Get or create user from Clerk (with rate limiting)
+router.post('/sync', userSyncRateLimit, async (req, res) => {
   try {
     const { clerkId, username, email, photo } = req.body;
 

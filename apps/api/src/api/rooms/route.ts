@@ -1,10 +1,11 @@
 import express from 'express';
 import { prisma } from '@shared-skies/database';
+import { apiRateLimit, roomCreationRateLimit } from '../../middleware/rateLimiter';
 
 const router = express.Router();
 
-// Get all rooms
-router.get('/', async (req, res) => {
+// Get all rooms (with API rate limiting)
+router.get('/', apiRateLimit, async (req, res) => {
   try {
     const rooms = await prisma.room.findMany({
       include: {
@@ -19,8 +20,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create a room
-router.post('/', async (req, res) => {
+// Create a room (with stricter rate limiting)
+router.post('/', roomCreationRateLimit, async (req, res) => {
   try {
     const { mood } = req.body;
     const room = await prisma.room.create({

@@ -23,7 +23,8 @@
     "prisma": "^6.11.1",
     "socket.io": "^4.8.1",
     "zod": "^3.25.74",
-    "@shared-skies/database": "*"
+    "@shared-skies/database": "*",
+    "@shared-skies/cache": "*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

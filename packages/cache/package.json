@@ -1,0 +1,18 @@
+{
+  "name": "@shared-skies/cache",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3",
+    "@upstash/ratelimit": "^2.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/node": "^20"
+  }
+}
