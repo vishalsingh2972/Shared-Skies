@@ -29,14 +29,14 @@ model Room {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
-  userId    String
-  roomId    String
+  id           String   @id @default(cuid())
+  content      String
+  createdAt    DateTime @default(now())
+  userClerkId  String
+  roomId       String
 
-  user      User     @relation(fields: [userId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id])
+  user         User     @relation(fields: [userClerkId], references: [clerkId])
+  room         Room     @relation(fields: [roomId], references: [id])
 }
 
 model RoomUser {

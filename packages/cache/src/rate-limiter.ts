@@ -18,7 +18,7 @@ export const rateLimiters = {
   api: createRateLimiter({ requests: 100, window: '1m' }, 'api'),
   
   // Chat messages
-  messages: createRateLimiter({ requests: 10, window: '1m' }, 'messages'),
+  messages: createRateLimiter({ requests: 50, window: '1m' }, 'messages'),
   
   // Audio messages (more restrictive)
   audio: createRateLimiter({ requests: 10, window: '1m' }, 'audio'),
@@ -27,7 +27,7 @@ export const rateLimiters = {
   roomCreation: createRateLimiter({ requests: 5, window: '1h' }, 'room-creation'),
   
   // User sync
-  userSync: createRateLimiter({ requests: 10, window: '1m' }, 'user-sync'),
+  userSync: createRateLimiter({ requests: 20, window: '1m' }, 'user-sync'),
 };
 
 // Helper function to check rate limit
@@ -36,6 +36,14 @@ export const checkRateLimit = async (
   identifier: string
 ): Promise<RateLimitResult> => {
   const result = await rateLimiter.limit(identifier);
+
+  //redis counter for checking if redis is working properly
+  console.log(`[Redis Rate Limit Debug] Identifier: ${identifier}`, {
+    success: result.success,
+    remaining: result.remaining,
+    limit: result.limit,
+    reset: new Date(result.reset).toISOString()
+  });
   
   return {
     success: result.success,

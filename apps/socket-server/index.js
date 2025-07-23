@@ -29,7 +29,7 @@ const withRateLimit = async (socket, rateLimiter, callback) => {
   try {
     const clientIP = getSocketIP(socket);
     const result = await checkRateLimit(rateLimiter, clientIP);
-    
+
     if (!result.success) {
       socket.emit('rateLimitError', {
         error: 'Rate limit exceeded',
@@ -39,7 +39,7 @@ const withRateLimit = async (socket, rateLimiter, callback) => {
       });
       return;
     }
-    
+
     await callback();
   } catch (error) {
     console.error('Rate limit error:', error);
@@ -85,7 +85,7 @@ io.on('connection', (socket) => {
     socket.to(data.roomId).emit('stopTyping', { user: data.user });
   });
 
-  // Rate limited chat message
+  // ✅ Updated: Rate limited chat message
   socket.on('chatMessage', async (data) => {
     await withRateLimit(socket, rateLimiters.messages, async () => {
       console.log('Received message payload:', data);
@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
         const savedMessage = await prisma.message.create({
           data: {
             roomId: data.roomId,
-            userId: data.userId,
+            userClerkId: data.userId,
             content: data.message,
           },
         });
@@ -111,7 +111,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('emojiReaction', (payload) => {
-    // Emoji reactions can use the same rate limit as messages
     withRateLimit(socket, rateLimiters.messages, async () => {
       console.log('🎉 Emoji reaction received:', payload);
       const key = `${payload.messageContent}_${payload.originalSender}`;
@@ -135,7 +134,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Rate limited audio message (more restrictive)
+  // ✅ Updated: Rate limited audio message
   socket.on('audioMessage', async (payload) => {
     await withRateLimit(socket, rateLimiters.audio, async () => {
       console.log('🎙️ Audio message received:', payload);
@@ -145,7 +144,7 @@ io.on('connection', (socket) => {
           await prisma.message.create({
             data: {
               roomId: payload.roomId,
-              userId: payload.userId,
+              userClerkId: payload.userId,
               content: '[Audio Message]',
             },
           });
@@ -186,7 +185,7 @@ server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
 
-// Cleanup functions remain the same
+// ✅ Cleanup function remains same
 async function deleteOldMessages() {
   console.log('🧹 Deleting messages older than 24 hours...');
   try {
